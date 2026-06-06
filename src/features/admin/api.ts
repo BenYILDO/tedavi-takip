@@ -10,7 +10,7 @@ import {
   SymptomReportItem,
 } from '@/types/db';
 
-/** Kapsam (RLS) dahilindeki hastalar — araştırmacı: kendi, admin: tümü. */
+/** Tüm hastalar — her personel (admin/araştırmacı) tüm hastaları görür. */
 export async function listPatients(): Promise<Profile[]> {
   const { data, error } = await supabase
     .from('profiles')
@@ -66,7 +66,7 @@ export interface PatientReportFeedItem {
   report: ReportWithItems | null;
 }
 
-/** Belirli bir gün için kapsam dahilindeki ilaç kayıtları + semptom raporları. */
+/** Belirli bir gün için tüm hastaların ilaç kayıtları + semptom raporları. */
 export async function getReportsForDate(date: string): Promise<PatientReportFeedItem[]> {
   const { data: logs, error } = await supabase
     .from('medication_logs')

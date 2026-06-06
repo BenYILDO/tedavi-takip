@@ -100,14 +100,12 @@ returns boolean language sql stable security definer set search_path = public as
   select exists (select 1 from public.profiles where id = auth.uid() and role in ('admin', 'researcher'));
 $$;
 
--- Verilen hasta, çağıran araştırmacının sahipliğinde mi (ya da çağıran admin mi)?
-create or replace function public.owns_patient(p_id uuid)
+-- Çağıran personel (admin veya araştırmacı) verilen hastayı görebilir mi?
+-- Tüm personel tüm hastaları görür; hasta verisi yalnızca personele açıktır.
+create or replace function public.can_view_patient(p_id uuid)
 returns boolean language sql stable security definer set search_path = public as $$
-  select exists (
-    select 1 from public.profiles
-    where id = p_id
-      and role = 'patient'
-      and (created_by = auth.uid() or public.is_admin())
+  select public.is_staff() and exists (
+    select 1 from public.profiles where id = p_id and role = 'patient'
   );
 $$;
 
@@ -135,8 +133,10 @@ alter table public.messages            enable row level security;
 alter table public.app_settings        enable row level security;
 
 -- ----- profiles -----
+-- Hasta kendi profilini; admin tüm profilleri; her personel (admin/araştırmacı)
+-- tüm hasta profillerini görebilir.
 create policy profiles_select on public.profiles for select to authenticated
-  using (id = auth.uid() or public.is_admin() or created_by = auth.uid());
+  using (id = auth.uid() or public.is_admin() or (public.is_staff() and role = 'patient'));
 create policy profiles_update_self on public.profiles for update to authenticated
   using (id = auth.uid()) with check (id = auth.uid());
 
@@ -157,7 +157,7 @@ create policy settings_admin_all on public.app_settings for all to authenticated
 
 -- ----- medication_logs -----
 create policy medlogs_select on public.medication_logs for select to authenticated
-  using (patient_id = auth.uid() or public.owns_patient(patient_id));
+  using (patient_id = auth.uid() or public.can_view_patient(patient_id));
 create policy medlogs_insert on public.medication_logs for insert to authenticated
   with check (patient_id = auth.uid());
 create policy medlogs_update on public.medication_logs for update to authenticated
@@ -165,7 +165,7 @@ create policy medlogs_update on public.medication_logs for update to authenticat
 
 -- ----- symptom_reports -----
 create policy reports_select on public.symptom_reports for select to authenticated
-  using (patient_id = auth.uid() or public.owns_patient(patient_id));
+  using (patient_id = auth.uid() or public.can_view_patient(patient_id));
 create policy reports_insert on public.symptom_reports for insert to authenticated
   with check (patient_id = auth.uid());
 create policy reports_delete on public.symptom_reports for delete to authenticated
@@ -175,7 +175,7 @@ create policy reports_delete on public.symptom_reports for delete to authenticat
 create policy items_select on public.symptom_report_items for select to authenticated
   using (exists (
     select 1 from public.symptom_reports r
-    where r.id = report_id and (r.patient_id = auth.uid() or public.owns_patient(r.patient_id))
+    where r.id = report_id and (r.patient_id = auth.uid() or public.can_view_patient(r.patient_id))
   ));
 create policy items_insert on public.symptom_report_items for insert to authenticated
   with check (exists (
@@ -185,15 +185,15 @@ create policy items_insert on public.symptom_report_items for insert to authenti
 
 -- ----- messages -----
 create policy messages_select on public.messages for select to authenticated
-  using (patient_id = auth.uid() or public.owns_patient(patient_id));
+  using (patient_id = auth.uid() or public.can_view_patient(patient_id));
 create policy messages_insert on public.messages for insert to authenticated
   with check (
     (patient_id = auth.uid() and sender_role = 'patient')
-    or (public.owns_patient(patient_id) and sender_role = 'admin')
+    or (public.can_view_patient(patient_id) and sender_role = 'admin')
   );
 create policy messages_update on public.messages for update to authenticated
-  using (patient_id = auth.uid() or public.owns_patient(patient_id))
-  with check (patient_id = auth.uid() or public.owns_patient(patient_id));
+  using (patient_id = auth.uid() or public.can_view_patient(patient_id))
+  with check (patient_id = auth.uid() or public.can_view_patient(patient_id));
 
 -- Realtime: mesaj akışı için
 alter publication supabase_realtime add table public.messages;

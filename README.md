@@ -14,7 +14,7 @@ Araştırmacılar (ve yönetici) hasta kayıtlarını oluşturur, raporları ve 
 | Rol | Yetki |
 |-----|-------|
 | **admin** | Sistemi yönetir, araştırmacı oluşturur, **tüm** hastaları/raporları görür, içerik & ayarları düzenler. |
-| **researcher** (araştırmacı) | Hasta kaydı oluşturur, **yalnızca kendi** hastalarının rapor ve mesajlarını görür. |
+| **researcher** (araştırmacı) | Hasta kaydı oluşturur, **tüm** hastaların rapor ve mesajlarını görür ve takip eder. |
 | **patient** (hasta) | Eğitim içerikleri, kayıt günlüğü (ilaç + semptom), soru sor. |
 
 Hastalar **kayıt numarası + şifre** ile giriş yapar. Kayıt numarası dahili olarak
