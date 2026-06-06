@@ -13,6 +13,7 @@ import {
 import { getReportsForDate } from '@/features/admin/api';
 import { formatDate, formatTime, todayISO } from '@/lib/date';
 import { useAsync } from '@/lib/useAsync';
+import { useFocusRefetch } from '@/lib/useFocusRefetch';
 import { colors, radius, spacing, typography } from '@/theme';
 
 function shiftDate(iso: string, days: number): string {
@@ -25,6 +26,7 @@ export default function ReportsScreen() {
   const router = useRouter();
   const [date, setDate] = useState(todayISO());
   const { data, loading, error, refetch } = useAsync(() => getReportsForDate(date), [date]);
+  useFocusRefetch(refetch);
 
   const isToday = date === todayISO();
 

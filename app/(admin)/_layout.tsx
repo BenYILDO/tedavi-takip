@@ -22,6 +22,7 @@ export default function AdminLayout() {
       <Stack.Screen name="thread" options={{ title: 'Mesajlaşma' }} />
       <Stack.Screen name="researchers" options={{ title: 'Araştırmacılar' }} />
       <Stack.Screen name="content" options={{ title: 'İçerik Yönetimi' }} />
+      <Stack.Screen name="change-password" options={{ title: 'Şifre Değiştir' }} />
     </Stack>
   );
 }

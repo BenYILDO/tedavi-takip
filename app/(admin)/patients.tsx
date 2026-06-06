@@ -13,11 +13,13 @@ import {
 import { listPatients } from '@/features/admin/api';
 import { formatDate } from '@/lib/date';
 import { useAsync } from '@/lib/useAsync';
+import { useFocusRefetch } from '@/lib/useFocusRefetch';
 import { colors, radius, spacing, typography } from '@/theme';
 
 export default function PatientsScreen() {
   const router = useRouter();
   const { data, loading, error, refetch } = useAsync(() => listPatients(), []);
+  useFocusRefetch(refetch);
   const [query, setQuery] = useState('');
 
   const filtered = useMemo(() => {

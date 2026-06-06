@@ -18,18 +18,23 @@ interface AuthContextValue {
   initializing: boolean;
   session: Session | null;
   profile: Profile | null;
+  /** Oturum var ama profil yüklenemedi (ağ hatası veya eksik profil kaydı). */
+  profileError: boolean;
   /** Kullanıcı adının (kayıt no) hesap durumunu sorgular. */
   checkAccount: (regNo: string) => Promise<AccountStatus>;
   /** Kayıt no + şifre ile giriş yapar. */
   signIn: (regNo: string, password: string) => Promise<void>;
   /** İlk kez şifre belirleyip ardından giriş yapar (hasta). */
   setPasswordAndSignIn: (regNo: string, password: string) => Promise<void>;
+  /** Giriş yapmış kullanıcının şifresini değiştirir. */
+  changePassword: (newPassword: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+/** Profil getirir. Ağ/sunucu hatasında fırlatır; kayıt yoksa null döner. */
 async function fetchProfile(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from('profiles')
@@ -37,8 +42,7 @@ async function fetchProfile(userId: string): Promise<Profile | null> {
     .eq('id', userId)
     .maybeSingle();
   if (error) {
-    console.warn('[auth] profile fetch error', error.message);
-    return null;
+    throw new Error(error.message);
   }
   return data as Profile | null;
 }
@@ -47,7 +51,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [initializing, setInitializing] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [profileError, setProfileError] = useState(false);
   const mounted = useRef(true);
+
+  const loadProfile = useCallback(async (userId: string) => {
+    try {
+      const p = await fetchProfile(userId);
+      if (!mounted.current) return;
+      setProfile(p);
+      setProfileError(!p); // oturum var ama profil kaydı yoksa hata olarak işaretle
+    } catch (e) {
+      console.warn('[auth] profile fetch error', e);
+      if (!mounted.current) return;
+      setProfile(null);
+      setProfileError(true);
+    }
+  }, []);
 
   useEffect(() => {
     mounted.current = true;
@@ -55,7 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted.current) return;
       setSession(data.session);
       if (data.session?.user) {
-        setProfile(await fetchProfile(data.session.user.id));
+        await loadProfile(data.session.user.id);
       }
       setInitializing(false);
     });
@@ -64,9 +83,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!mounted.current) return;
       setSession(newSession);
       if (newSession?.user) {
-        setProfile(await fetchProfile(newSession.user.id));
+        await loadProfile(newSession.user.id);
       } else {
         setProfile(null);
+        setProfileError(false);
       }
     });
 
@@ -74,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted.current = false;
       sub.subscription.unsubscribe();
     };
-  }, []);
+  }, [loadProfile]);
 
   const checkAccount = useCallback(async (regNo: string): Promise<AccountStatus> => {
     const { data, error } = await supabase.rpc('account_status', {
@@ -112,28 +132,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [signIn],
   );
 
+  const changePassword = useCallback(async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      throw new Error(error.message || 'Şifre değiştirilemedi.');
+    }
+  }, []);
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
   }, []);
 
   const refreshProfile = useCallback(async () => {
     if (session?.user) {
-      setProfile(await fetchProfile(session.user.id));
+      await loadProfile(session.user.id);
     }
-  }, [session]);
+  }, [session, loadProfile]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       initializing,
       session,
       profile,
+      profileError,
       checkAccount,
       signIn,
       setPasswordAndSignIn,
+      changePassword,
       signOut,
       refreshProfile,
     }),
-    [initializing, session, profile, checkAccount, signIn, setPasswordAndSignIn, signOut, refreshProfile],
+    [
+      initializing,
+      session,
+      profile,
+      profileError,
+      checkAccount,
+      signIn,
+      setPasswordAndSignIn,
+      changePassword,
+      signOut,
+      refreshProfile,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

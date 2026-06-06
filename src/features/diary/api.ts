@@ -72,42 +72,24 @@ export async function getTodayReport(patientId: string): Promise<TodayReport | n
 }
 
 /**
- * Bugünün semptom raporunu kaydeder. Aynı gün için varsa önce siler (cascade),
- * ardından yeni rapor + kalemleri ekler. Böylece rapor güncellenebilir olur.
+ * Bugünün semptom raporunu kaydeder. Sunucudaki atomik RPC (tek transaction) ile
+ * aynı gün için varsa siler ve yeni rapor + kalemleri ekler. Böylece delete+insert
+ * arasındaki tutarsızlık/veri kaybı riski olmaz ve rapor güncellenebilir kalır.
  */
 export async function submitSymptomReport(
-  patientId: string,
+  _patientId: string,
   medicationLogId: string | null,
   severities: Record<string, SeverityKey>,
 ): Promise<void> {
-  const date = todayISO();
-
-  await supabase
-    .from('symptom_reports')
-    .delete()
-    .eq('patient_id', patientId)
-    .eq('report_date', date);
-
-  const { data: report, error } = await supabase
-    .from('symptom_reports')
-    .insert({
-      patient_id: patientId,
-      medication_log_id: medicationLogId,
-      report_date: date,
-      status: 'submitted',
-    })
-    .select('id')
-    .single();
-  if (error) throw new Error(error.message);
-
-  const rows = Object.entries(severities).map(([symptom_id, severity]) => ({
-    report_id: (report as { id: string }).id,
+  const items = Object.entries(severities).map(([symptom_id, severity]) => ({
     symptom_id,
     severity,
   }));
 
-  if (rows.length > 0) {
-    const { error: itemsError } = await supabase.from('symptom_report_items').insert(rows);
-    if (itemsError) throw new Error(itemsError.message);
-  }
+  const { error } = await supabase.rpc('submit_symptom_report', {
+    p_log_id: medicationLogId,
+    p_report_date: todayISO(),
+    p_items: items,
+  });
+  if (error) throw new Error(error.message);
 }

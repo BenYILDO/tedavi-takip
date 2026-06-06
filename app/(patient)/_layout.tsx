@@ -25,6 +25,7 @@ export default function PatientLayout() {
       <Stack.Screen name="diary/index" options={{ title: 'Kayıt Günlüğü' }} />
       <Stack.Screen name="diary/symptoms" options={{ title: 'Semptom Anketi' }} />
       <Stack.Screen name="diary/checklist" options={{ title: 'Semptom Kontrol Listesi' }} />
+      <Stack.Screen name="change-password" options={{ title: 'Şifre Değiştir' }} />
     </Stack>
     </DiaryDraftProvider>
   );

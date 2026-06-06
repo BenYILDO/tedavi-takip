@@ -14,12 +14,14 @@ import {
 import { getPatientHistory } from '@/features/admin/api';
 import { formatDate, formatTime } from '@/lib/date';
 import { useAsync } from '@/lib/useAsync';
+import { useFocusRefetch } from '@/lib/useFocusRefetch';
 import { colors, radius, spacing, typography } from '@/theme';
 
 export default function PatientDetailScreen() {
   const router = useRouter();
   const { id, name, reg } = useLocalSearchParams<{ id: string; name: string; reg: string }>();
   const { data, loading, error, refetch } = useAsync(() => getPatientHistory(String(id)), [id]);
+  useFocusRefetch(refetch);
 
   if (loading) return <LoadingState />;
   if (error) {

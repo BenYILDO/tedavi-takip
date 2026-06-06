@@ -55,10 +55,15 @@ export async function createResearcher(
   if (error) throw new Error(await readFunctionError(error, 'Araştırmacı oluşturulamadı.'));
 }
 
+/** Kalemleri ve semptom adıyla birlikte gömülü semptom raporu. */
+export type ReportWithItems = SymptomReport & {
+  items: (SymptomReportItem & { symptom: Symptom })[];
+};
+
 export interface PatientReportFeedItem {
   log: MedicationLog;
   patient: Pick<Profile, 'id' | 'full_name' | 'registration_number'>;
-  report: (SymptomReport & { items: (SymptomReportItem & { symptom: Symptom })[] }) | null;
+  report: ReportWithItems | null;
 }
 
 /** Belirli bir gün için kapsam dahilindeki ilaç kayıtları + semptom raporları. */
@@ -76,9 +81,9 @@ export async function getReportsForDate(date: string): Promise<PatientReportFeed
     .eq('report_date', date);
   if (rErr) throw new Error(rErr.message);
 
-  const reportByPatient = new Map<string, PatientReportFeedItem['report']>();
-  (reports ?? []).forEach((r) => {
-    reportByPatient.set((r as { patient_id: string }).patient_id, r as never);
+  const reportByPatient = new Map<string, ReportWithItems>();
+  ((reports ?? []) as ReportWithItems[]).forEach((r) => {
+    reportByPatient.set(r.patient_id, r);
   });
 
   return (logs ?? []).map((l) => {
@@ -95,7 +100,7 @@ export async function getReportsForDate(date: string): Promise<PatientReportFeed
 
 export interface PatientHistory {
   logs: MedicationLog[];
-  reports: (SymptomReport & { items: (SymptomReportItem & { symptom: Symptom })[] })[];
+  reports: ReportWithItems[];
 }
 
 export async function getPatientHistory(patientId: string): Promise<PatientHistory> {
@@ -115,7 +120,7 @@ export async function getPatientHistory(patientId: string): Promise<PatientHisto
     .limit(60);
   if (rErr) throw new Error(rErr.message);
 
-  return { logs: (logs ?? []) as MedicationLog[], reports: (reports ?? []) as never };
+  return { logs: (logs ?? []) as MedicationLog[], reports: (reports ?? []) as ReportWithItems[] };
 }
 
 /** Mesajı olan hastalar + okunmamış (admin tarafı) sayıları. */

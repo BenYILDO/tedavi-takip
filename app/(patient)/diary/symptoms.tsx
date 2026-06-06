@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Button, Card, ErrorState, LoadingState, ScreenContainer, SeverityPicker } from '@/components';
 import { useAuth } from '@/features/auth/AuthProvider';
@@ -24,9 +24,6 @@ export default function SymptomsScreen() {
     initSymptoms(list, existingMap);
     return list;
   }, [profile?.id]);
-
-  // Taslakta semptomlar yoksa (ilk yükleme) bekle
-  useEffect(() => {}, [symptoms.length]);
 
   if (loading) return <LoadingState />;
   if (error) {

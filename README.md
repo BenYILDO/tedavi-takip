@@ -51,7 +51,8 @@ Supabase CLI ile `supabase db push`):
 
 1. `supabase/migrations/0001_init.sql` — tablolar, fonksiyonlar, RLS
 2. `supabase/migrations/0002_storage.sql` — `education-media` Storage bucket'ı
-3. `supabase/seed.sql` — semptom listesi + örnek eğitim içerikleri + ayarlar
+3. `supabase/migrations/0003_submit_report.sql` — atomik semptom raporu kaydı (RPC)
+4. `supabase/seed.sql` — semptom listesi + örnek eğitim içerikleri + ayarlar
 
 ### İlk yönetici (admin) hesabını oluşturma
 

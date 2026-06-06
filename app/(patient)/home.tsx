@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { Href, useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MenuCard, ScreenContainer } from '@/components';
@@ -11,7 +11,7 @@ interface MenuItem {
   subtitle: string;
   icon: keyof typeof Ionicons.glyphMap;
   color: string;
-  route: string;
+  route: Href;
 }
 
 const MENU: MenuItem[] = [
@@ -80,10 +80,18 @@ export default function PatientHome() {
           <Text style={styles.name}>{firstName}</Text>
         </View>
         <Pressable
+          onPress={() => router.push('/(patient)/change-password')}
+          accessibilityLabel="Şifre değiştir"
+          hitSlop={8}
+          style={styles.iconBtn}
+        >
+          <Ionicons name="key-outline" size={20} color={colors.primary} />
+        </Pressable>
+        <Pressable
           onPress={signOut}
           accessibilityLabel="Çıkış yap"
           hitSlop={8}
-          style={styles.logoutBtn}
+          style={styles.iconBtn}
         >
           <Ionicons name="log-out-outline" size={22} color={colors.primary} />
         </Pressable>
@@ -108,12 +116,12 @@ export default function PatientHome() {
       <View style={styles.menu}>
         {MENU.map((item) => (
           <MenuCard
-            key={item.route}
+            key={item.title}
             title={item.title}
             subtitle={item.subtitle}
             icon={item.icon}
             color={item.color}
-            onPress={() => router.push(item.route as never)}
+            onPress={() => router.push(item.route)}
           />
         ))}
       </View>
@@ -125,12 +133,13 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.sm,
     marginTop: spacing.sm,
     marginBottom: spacing.lg,
   },
   greeting: { ...typography.caption },
   name: { ...typography.title },
-  logoutBtn: {
+  iconBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,

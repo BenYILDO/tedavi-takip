@@ -6,11 +6,13 @@ import { Card, EmptyState, ErrorState, LoadingState, ScreenContainer } from '@/c
 import { listMessageThreads } from '@/features/admin/api';
 import { formatDateTime } from '@/lib/date';
 import { useAsync } from '@/lib/useAsync';
+import { useFocusRefetch } from '@/lib/useFocusRefetch';
 import { colors, spacing, typography } from '@/theme';
 
 export default function MessagesScreen() {
   const router = useRouter();
   const { data, loading, error, refetch } = useAsync(() => listMessageThreads(), []);
+  useFocusRefetch(refetch);
 
   if (loading) return <LoadingState />;
   if (error) {

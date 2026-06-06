@@ -11,6 +11,7 @@ import {
 } from '@/features/admin/api';
 import { todayISO } from '@/lib/date';
 import { useAsync } from '@/lib/useAsync';
+import { useFocusRefetch } from '@/lib/useFocusRefetch';
 import { colors, radius, spacing, typography } from '@/theme';
 
 export default function AdminDashboard() {
@@ -31,6 +32,7 @@ export default function AdminDashboard() {
       unread: threads.reduce((sum, t) => sum + t.unread, 0),
     };
   }, [profile?.id]);
+  useFocusRefetch(refetch);
 
   return (
     <ScreenContainer
@@ -42,6 +44,14 @@ export default function AdminDashboard() {
           <Text style={styles.role}>{isAdmin ? 'Yönetici' : 'Araştırmacı'}</Text>
           <Text style={styles.name}>{profile?.full_name ?? 'Panel'}</Text>
         </View>
+        <Pressable
+          onPress={() => router.push('/(admin)/change-password')}
+          hitSlop={8}
+          style={styles.logoutBtn}
+          accessibilityLabel="Şifre değiştir"
+        >
+          <Ionicons name="key-outline" size={20} color={colors.primary} />
+        </Pressable>
         <Pressable onPress={signOut} hitSlop={8} style={styles.logoutBtn} accessibilityLabel="Çıkış">
           <Ionicons name="log-out-outline" size={22} color={colors.primary} />
         </Pressable>
@@ -137,7 +147,7 @@ function StatCard({
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm, marginBottom: spacing.lg },
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.sm, marginBottom: spacing.lg },
   role: { ...typography.caption, color: colors.primary, fontWeight: '600' },
   name: { ...typography.title },
   logoutBtn: {
