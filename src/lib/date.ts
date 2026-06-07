@@ -7,6 +7,20 @@ export function todayISO(): string {
   return `${y}-${m}-${d}`;
 }
 
+/**
+ * YYYY-MM-DD tarihine gün ekler/çıkarır ve YYYY-MM-DD (yerel) döndürür.
+ * toISOString() kullanılmaz; aksi halde UTC'ye çevirim tarihi bir gün
+ * kaydırabilir (örn. UTC+3'te yerel gece yarısı önceki güne düşer).
+ */
+export function addDays(isoDate: string, days: number): string {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  const dt = new Date(y, m - 1, d + days);
+  const yy = dt.getFullYear();
+  const mm = String(dt.getMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
+}
+
 /** Date nesnesini HH:MM:SS (DB time) biçimine çevirir. */
 export function toDbTime(date: Date): string {
   const h = String(date.getHours()).padStart(2, '0');

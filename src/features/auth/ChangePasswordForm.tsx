@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
+import { alertAsync } from '@/lib/dialog';
 import { Button, Card, ScreenContainer, TextField } from '@/components';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { colors, spacing, typography } from '@/theme';
@@ -30,9 +31,7 @@ export function ChangePasswordForm() {
     setSubmitting(true);
     try {
       await changePassword(password);
-      Alert.alert('Şifre güncellendi', 'Şifreniz başarıyla değiştirildi.', [
-        { text: 'Tamam', onPress: () => router.back() },
-      ]);
+      alertAsync('Şifre güncellendi', 'Şifreniz başarıyla değiştirildi.', () => router.back());
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Şifre değiştirilemedi.');
     } finally {

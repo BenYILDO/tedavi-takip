@@ -7,7 +7,11 @@ export default function AdminLayout() {
       screenOptions={{
         headerStyle: { backgroundColor: colors.surface },
         headerTintColor: colors.primary,
-        headerTitleStyle: { ...typography.heading },
+        headerTitleStyle: {
+          fontSize: typography.heading.fontSize,
+          fontWeight: typography.heading.fontWeight,
+          color: colors.text,
+        },
         headerShadowVisible: false,
         headerBackTitle: 'Geri',
         contentStyle: { backgroundColor: colors.background },
@@ -21,7 +25,9 @@ export default function AdminLayout() {
       <Stack.Screen name="messages" options={{ title: 'Mesajlar' }} />
       <Stack.Screen name="thread" options={{ title: 'Mesajlaşma' }} />
       <Stack.Screen name="researchers" options={{ title: 'Araştırmacılar' }} />
+      <Stack.Screen name="researcher-detail" options={{ title: 'Araştırmacıyı Düzenle' }} />
       <Stack.Screen name="content" options={{ title: 'İçerik Yönetimi' }} />
+      <Stack.Screen name="settings" options={{ title: 'Profil ve Ayarlar' }} />
       <Stack.Screen name="change-password" options={{ title: 'Şifre Değiştir' }} />
     </Stack>
   );

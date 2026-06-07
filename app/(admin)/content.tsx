@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Alert, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { alertAsync } from '@/lib/dialog';
 import {
   Button,
   Card,
@@ -53,9 +54,9 @@ function PhoneEditor({ initial }: { initial: string }) {
     setSaving(true);
     try {
       await setSetting('researcher_phone', phone.trim());
-      Alert.alert('Kaydedildi', 'İletişim numarası güncellendi.');
+      alertAsync('Kaydedildi', 'İletişim numarası güncellendi.');
     } catch (e) {
-      Alert.alert('Hata', e instanceof Error ? e.message : 'Kaydedilemedi.');
+      alertAsync('Hata', e instanceof Error ? e.message : 'Kaydedilemedi.');
     } finally {
       setSaving(false);
     }
@@ -70,7 +71,7 @@ function PhoneEditor({ initial }: { initial: string }) {
         value={phone}
         onChangeText={setPhone}
         keyboardType="phone-pad"
-        hint="“Soru Sor” ekranındaki arama butonunda kullanılır."
+        hint="Genel iletişim/destek numarası. Her araştırmacının kendi numarası, hastanın mesaj ekranında ayrıca gösterilir."
       />
       <Button label="Kaydet" onPress={onSave} loading={saving} />
     </Card>
@@ -93,9 +94,9 @@ function SectionEditor({ section }: { section: EducationSection }) {
         body,
         ...(isVideo ? { video_url: videoUrl.trim() || null } : {}),
       });
-      Alert.alert('Kaydedildi', `“${title}” güncellendi.`);
+      alertAsync('Kaydedildi', `“${title}” güncellendi.`);
     } catch (e) {
-      Alert.alert('Hata', e instanceof Error ? e.message : 'Kaydedilemedi.');
+      alertAsync('Hata', e instanceof Error ? e.message : 'Kaydedilemedi.');
     } finally {
       setSaving(false);
     }

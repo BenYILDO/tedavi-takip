@@ -7,7 +7,6 @@
     "icon": "./assets/icon.png",
     "scheme": "tedavitakip",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.tedavitakip.app",
@@ -44,10 +43,31 @@
           "image": "./assets/splash-icon.png",
           "imageWidth": 180
         }
+      ],
+      "@react-native-community/datetimepicker",
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "color": "#0E7C7B"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Profil fotoğrafınızı seçebilmek için galeri erişimi gerekir."
+        }
       ]
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "b45d1951-8d76-4742-8253-e9411391f978"
+      }
+    },
+    "owner": "benyildo"
   }
 }

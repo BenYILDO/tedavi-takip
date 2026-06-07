@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { alertAsync } from '@/lib/dialog';
 import {
   Button,
   Card,
@@ -45,11 +46,11 @@ export default function ChecklistScreen() {
     try {
       await submitSymptomReport(profile.id, medicationLogId, severities);
       reset();
-      Alert.alert('Teşekkürler', 'Semptom raporunuz araştırmacınıza iletildi.', [
-        { text: 'Tamam', onPress: () => router.replace('/(patient)/home') },
-      ]);
+      alertAsync('Teşekkürler', 'Semptom raporunuz araştırmacınıza iletildi.', () =>
+        router.replace('/(patient)/home'),
+      );
     } catch {
-      Alert.alert('Hata', 'Rapor gönderilemedi. Lütfen tekrar deneyin.');
+      alertAsync('Hata', 'Rapor gönderilemedi. Lütfen tekrar deneyin.');
     } finally {
       setSubmitting(false);
     }

@@ -34,3 +34,41 @@ export const rememberedRegNo = {
   set: (value: string) => setItem(REMEMBERED_REG_NO, value),
   clear: () => deleteItem(REMEMBERED_REG_NO),
 };
+
+const LAST_PUSH_TOKEN = 'last_push_token';
+
+/**
+ * Bu cihaza ait Expo push token'ını kalıcı saklar. Uygulama yeniden başlatılsa
+ * bile çıkışta token'ı sunucudan silebilmek için gereklidir.
+ */
+export const lastPushToken = {
+  get: () => getItem(LAST_PUSH_TOKEN),
+  set: (value: string) => setItem(LAST_PUSH_TOKEN, value),
+  clear: () => deleteItem(LAST_PUSH_TOKEN),
+};
+
+// ---- Günlük tedavi hatırlatıcısı ayarları (cihaza özel) ----
+
+const REMINDER_SETTINGS = 'reminder_settings_v1';
+
+export interface ReminderSettings {
+  enabled: boolean;
+  hour: number; // 0-23
+  minute: number; // 0-59
+}
+
+export const DEFAULT_REMINDER: ReminderSettings = { enabled: false, hour: 20, minute: 0 };
+
+export const reminderSettings = {
+  async get(): Promise<ReminderSettings> {
+    try {
+      const raw = await AsyncStorage.getItem(REMINDER_SETTINGS);
+      if (!raw) return DEFAULT_REMINDER;
+      return { ...DEFAULT_REMINDER, ...(JSON.parse(raw) as Partial<ReminderSettings>) };
+    } catch {
+      return DEFAULT_REMINDER;
+    }
+  },
+  set: (value: ReminderSettings) =>
+    AsyncStorage.setItem(REMINDER_SETTINGS, JSON.stringify(value)),
+};

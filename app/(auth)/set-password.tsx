@@ -12,6 +12,7 @@ export default function SetPasswordScreen() {
   const { regNo } = useLocalSearchParams<{ regNo: string }>();
   const { setPasswordAndSignIn } = useAuth();
 
+  const [activationCode, setActivationCode] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -19,6 +20,10 @@ export default function SetPasswordScreen() {
 
   const onSubmit = async () => {
     setError(null);
+    if (!activationCode.trim()) {
+      setError('Aktivasyon kodunu girin. Bu kod araştırmacınız tarafından verilir.');
+      return;
+    }
     if (password.length < MIN_LENGTH) {
       setError(`Şifre en az ${MIN_LENGTH} karakter olmalıdır.`);
       return;
@@ -29,7 +34,7 @@ export default function SetPasswordScreen() {
     }
     setSubmitting(true);
     try {
-      await setPasswordAndSignIn(String(regNo), password);
+      await setPasswordAndSignIn(String(regNo), password, activationCode);
       // Başarılı → otomatik giriş, RootNavigator yönlendirir.
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Şifre belirlenemedi.');
@@ -56,6 +61,14 @@ export default function SetPasswordScreen() {
           <Text style={styles.regText}>Kayıt No: {regNo}</Text>
         </View>
 
+        <TextField
+          label="Aktivasyon Kodu"
+          placeholder="Araştırmacınızın verdiği kod"
+          value={activationCode}
+          onChangeText={setActivationCode}
+          autoCapitalize="characters"
+          autoCorrect={false}
+        />
         <TextField
           label="Yeni Şifre"
           placeholder={`En az ${MIN_LENGTH} karakter`}

@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { Href, useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -58,11 +59,18 @@ const MENU: MenuItem[] = [
     route: '/(patient)/diary',
   },
   {
-    title: 'Soru Sor',
-    subtitle: 'Araştırmacıyla iletişime geçin',
+    title: 'Mesajlar',
+    subtitle: 'Araştırmacılarla iletişime geçin',
     icon: 'chatbubbles',
     color: '#1E9FA8',
     route: '/(patient)/ask',
+  },
+  {
+    title: 'Hatırlatıcılar',
+    subtitle: 'Günlük tedavi hatırlatması kurun',
+    icon: 'alarm',
+    color: '#C2410C',
+    route: '/(patient)/reminders',
   },
 ];
 
@@ -80,12 +88,16 @@ export default function PatientHome() {
           <Text style={styles.name}>{firstName}</Text>
         </View>
         <Pressable
-          onPress={() => router.push('/(patient)/change-password')}
-          accessibilityLabel="Şifre değiştir"
+          onPress={() => router.push('/(patient)/settings')}
+          accessibilityLabel="Profil ve ayarlar"
           hitSlop={8}
-          style={styles.iconBtn}
+          style={styles.avatarBtn}
         >
-          <Ionicons name="key-outline" size={20} color={colors.primary} />
+          {profile?.avatar_url ? (
+            <Image source={{ uri: profile.avatar_url }} style={styles.avatarImg} contentFit="cover" />
+          ) : (
+            <Ionicons name="person-circle-outline" size={26} color={colors.primary} />
+          )}
         </Pressable>
         <Pressable
           onPress={signOut}
@@ -147,6 +159,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  avatarBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImg: { width: 44, height: 44 },
   diaryBanner: {
     flexDirection: 'row',
     alignItems: 'center',

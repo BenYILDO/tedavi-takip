@@ -1,6 +1,8 @@
 import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
 import { adminClient, getCaller, regNoToEmail } from '../_shared/util.ts';
 
+const USERNAME_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -11,13 +13,26 @@ Deno.serve(async (req) => {
     }
 
     const { registration_number, full_name, password, phone } = await req.json();
-    const username = (registration_number ?? '').toString().trim();
+    const username = (registration_number ?? '').toString().trim().toLowerCase();
     const name = (full_name ?? '').toString().trim();
     const pass = (password ?? '').toString();
+    const phoneVal = (phone ?? '').toString().trim();
 
     if (!username || !name || pass.length < 6) {
       return jsonResponse(
         { error: 'Kullanıcı adı, ad soyad ve en az 6 karakterlik şifre zorunludur.' },
+        400,
+      );
+    }
+    if (!phoneVal) {
+      return jsonResponse({ error: 'Telefon numarası zorunludur.' }, 400);
+    }
+    if (!USERNAME_PATTERN.test(username)) {
+      return jsonResponse(
+        {
+          error:
+            'Kullanıcı adı harf veya rakamla başlamalı; yalnızca İngilizce küçük harf, rakam, _ ve - içermelidir.',
+        },
         400,
       );
     }
@@ -47,7 +62,7 @@ Deno.serve(async (req) => {
       role: 'researcher',
       registration_number: username,
       full_name: name,
-      phone: (phone ?? '').toString().trim() || null,
+      phone: phoneVal,
       password_set: true,
       created_by: caller.id,
     });

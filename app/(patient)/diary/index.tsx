@@ -2,11 +2,13 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { alertAsync } from '@/lib/dialog';
 import { Button, Card, LoadingState, ScreenContainer } from '@/components';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { getTodayLog, upsertMedicationLog } from '@/features/diary/api';
 import { useDiaryDraft } from '@/features/diary/DiaryDraftContext';
+import { refreshReminder } from '@/features/notifications/reminders';
 import { formatTime, toDbTime } from '@/lib/date';
 import { colors, radius, spacing, typography } from '@/theme';
 
@@ -60,16 +62,18 @@ export default function DiaryIndexScreen() {
         answer === 'yes',
         answer === 'yes' ? toDbTime(time) : null,
       );
+      // Bugün kayıt yapıldı → günün hatırlatıcısını atla / yeniden zamanla.
+      refreshReminder(profile.id);
       if (answer === 'yes') {
         setMedicationLogId(log.id);
         router.push('/(patient)/diary/symptoms');
       } else {
-        Alert.alert('Kaydınız alındı', 'Bugün için tedavi kaydınız kaydedildi.', [
-          { text: 'Tamam', onPress: () => router.replace('/(patient)/home') },
-        ]);
+        alertAsync('Kaydınız alındı', 'Bugün için tedavi kaydınız kaydedildi.', () =>
+          router.replace('/(patient)/home'),
+        );
       }
     } catch {
-      Alert.alert('Hata', 'Kayıt sırasında bir sorun oluştu. Lütfen tekrar deneyin.');
+      alertAsync('Hata', 'Kayıt sırasında bir sorun oluştu. Lütfen tekrar deneyin.');
     } finally {
       setSubmitting(false);
     }

@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { alertAsync } from '@/lib/dialog';
 import { Button, Card, ScreenContainer, TextField } from '@/components';
 import { createPatient } from '@/features/admin/api';
 import { colors, radius, spacing, typography } from '@/theme';
@@ -21,11 +22,13 @@ export default function CreatePatientScreen() {
     }
     setSubmitting(true);
     try {
-      await createPatient(regNo, fullName);
-      Alert.alert(
+      const { activationCode } = await createPatient(regNo, fullName);
+      alertAsync(
         'Hasta oluşturuldu',
-        `Kayıt No: ${regNo.trim()}\n\nHasta ilk girişte kendi şifresini belirleyecektir.`,
-        [{ text: 'Tamam', onPress: () => router.back() }],
+        `Kayıt No: ${regNo.trim()}\n\nAktivasyon Kodu: ${activationCode}\n\n` +
+          'Bu kodu hastaya iletin. Hasta ilk girişte kayıt numarası ve bu kod ile ' +
+          'kendi şifresini belirleyecektir. Kod tek kullanımlıktır.',
+        () => router.back(),
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Hasta oluşturulamadı.');
@@ -41,8 +44,8 @@ export default function CreatePatientScreen() {
       <View style={styles.info}>
         <Ionicons name="information-circle" size={18} color={colors.accent} />
         <Text style={styles.infoText}>
-          Hasta, belirlediğiniz kayıt numarası ile giriş yapacak ve ilk girişte kendi şifresini
-          oluşturacaktır.
+          Hasta oluşturunca bir aktivasyon kodu üretilir. Hasta, kayıt numarası ve bu kod ile ilk
+          girişte kendi şifresini oluşturur. Kodu hastaya iletmeyi unutmayın.
         </Text>
       </View>
 

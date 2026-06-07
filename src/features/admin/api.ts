@@ -1,4 +1,5 @@
 import { SeverityKey } from '@/constants/severity';
+import { readFunctionError } from '@/lib/functionError';
 import { supabase } from '@/lib/supabase';
 import {
   EducationSection,
@@ -31,11 +32,16 @@ export async function listResearchers(): Promise<Profile[]> {
   return (data ?? []) as Profile[];
 }
 
-export async function createPatient(registrationNumber: string, fullName: string): Promise<void> {
-  const { error } = await supabase.functions.invoke('admin-create-patient', {
+/** Hasta oluşturur ve hastaya iletilecek tek kullanımlık aktivasyon kodunu döndürür. */
+export async function createPatient(
+  registrationNumber: string,
+  fullName: string,
+): Promise<{ activationCode: string }> {
+  const { data, error } = await supabase.functions.invoke('admin-create-patient', {
     body: { registration_number: registrationNumber.trim(), full_name: fullName.trim() },
   });
   if (error) throw new Error(await readFunctionError(error, 'Hasta oluşturulamadı.'));
+  return { activationCode: (data as { activation_code?: string })?.activation_code ?? '' };
 }
 
 export async function createResearcher(
@@ -46,13 +52,37 @@ export async function createResearcher(
 ): Promise<void> {
   const { error } = await supabase.functions.invoke('admin-create-researcher', {
     body: {
-      registration_number: username.trim(),
+      registration_number: username.trim().toLowerCase(),
       full_name: fullName.trim(),
       password,
       phone: phone.trim(),
     },
   });
   if (error) throw new Error(await readFunctionError(error, 'Araştırmacı oluşturulamadı.'));
+}
+
+export interface ResearcherUpdate {
+  fullName: string;
+  phone: string;
+  phoneHidden: boolean;
+  /** Boşsa kullanıcı adı değişmez. */
+  username?: string;
+  /** Boşsa şifre değişmez. */
+  password?: string;
+}
+
+export async function updateResearcher(researcherId: string, patch: ResearcherUpdate): Promise<void> {
+  const { error } = await supabase.functions.invoke('admin-update-researcher', {
+    body: {
+      researcher_id: researcherId,
+      full_name: patch.fullName.trim(),
+      phone: patch.phone.trim(),
+      phone_hidden: patch.phoneHidden,
+      username: patch.username?.trim().toLowerCase() || undefined,
+      password: patch.password || undefined,
+    },
+  });
+  if (error) throw new Error(await readFunctionError(error, 'Araştırmacı güncellenemedi.'));
 }
 
 /** Kalemleri ve semptom adıyla birlikte gömülü semptom raporu. */
@@ -123,7 +153,11 @@ export async function getPatientHistory(patientId: string): Promise<PatientHisto
   return { logs: (logs ?? []) as MedicationLog[], reports: (reports ?? []) as ReportWithItems[] };
 }
 
-/** Mesajı olan hastalar + okunmamış (admin tarafı) sayıları. */
+/**
+ * Giriş yapan personelin sohbet ettiği hastalar + okunmamış sayıları.
+ * RLS sayesinde sorgu yalnızca bu personele ait (staff_id = auth.uid())
+ * mesajları döndürür; her hasta bir sohbete denk gelir.
+ */
 export interface MessageThreadSummary {
   patient: Pick<Profile, 'id' | 'full_name' | 'registration_number'>;
   lastMessage: Message;
@@ -147,9 +181,9 @@ export async function listMessageThreads(): Promise<MessageThreadSummary[]> {
       byPatient.set(msg.patient_id, {
         patient: msg.patient,
         lastMessage: msg,
-        unread: msg.sender_role === 'patient' && !msg.read_by_admin ? 1 : 0,
+        unread: msg.sender_role === 'patient' && !msg.read_by_staff ? 1 : 0,
       });
-    } else if (msg.sender_role === 'patient' && !msg.read_by_admin) {
+    } else if (msg.sender_role === 'patient' && !msg.read_by_staff) {
       existing.unread += 1;
     }
   });
@@ -181,20 +215,6 @@ export async function updateEducationSection(
 export async function setSetting(key: string, value: string): Promise<void> {
   const { error } = await supabase.from('app_settings').upsert({ key, value });
   if (error) throw new Error(error.message);
-}
-
-async function readFunctionError(error: unknown, fallback: string): Promise<string> {
-  // supabase functions invoke FunctionsHttpError'da context.json() ile gövde okunabilir.
-  try {
-    const ctx = (error as { context?: { json?: () => Promise<{ error?: string }> } }).context;
-    if (ctx?.json) {
-      const body = await ctx.json();
-      if (body?.error) return body.error;
-    }
-  } catch {
-    /* yoksay */
-  }
-  return error instanceof Error ? error.message : fallback;
 }
 
 export type { SeverityKey };

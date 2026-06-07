@@ -1,5 +1,4 @@
 import { Stack, useRouter, useSegments } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { View } from 'react-native';
@@ -8,20 +7,20 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Button, LoadingState } from '@/components';
 import { ErrorState } from '@/components/States';
 import { AuthProvider, useAuth } from '@/features/auth/AuthProvider';
+import { InAppMessageBanner } from '@/features/notifications/InAppMessageProvider';
+import { useNotifications } from '@/features/notifications/useNotifications';
 import { colors, spacing } from '@/theme';
-
-SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function RootNavigator() {
   const { initializing, session, profile, profileError, refreshProfile, signOut } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  useNotifications();
 
   const signedIn = !!session && !!profile;
 
   useEffect(() => {
     if (initializing) return;
-    SplashScreen.hideAsync().catch(() => {});
 
     const group = segments[0]; // '(auth)' | '(patient)' | '(admin)'
 
@@ -62,11 +61,14 @@ function RootNavigator() {
   }
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen name="(patient)" />
-      <Stack.Screen name="(admin)" />
-    </Stack>
+    <>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(patient)" />
+        <Stack.Screen name="(admin)" />
+      </Stack>
+      <InAppMessageBanner />
+    </>
   );
 }
 

@@ -8,6 +8,10 @@ export interface Profile {
   registration_number: string | null;
   full_name: string | null;
   phone: string | null;
+  /** Personel telefonunu hastalardan gizlerse true. */
+  phone_hidden: boolean;
+  /** Profil fotoğrafının public URL'si (avatars bucket). */
+  avatar_url: string | null;
   password_set: boolean;
   created_by: string | null;
   created_at: string;
@@ -68,10 +72,12 @@ export interface SymptomReportItem {
 export interface Message {
   id: string;
   patient_id: string;
-  sender_role: 'patient' | 'admin';
+  /** Sohbetin personel tarafı (admin veya araştırmacı). Sohbet (patient_id, staff_id) çiftine aittir. */
+  staff_id: string;
+  sender_role: 'patient' | 'staff';
   body: string;
   created_at: string;
-  read_by_admin: boolean;
+  read_by_staff: boolean;
   read_by_patient: boolean;
 }
 

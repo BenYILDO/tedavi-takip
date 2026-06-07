@@ -10,6 +10,9 @@ export const PATIENT_EMAIL_DOMAIN =
 export const regNoToEmail = (regNo: string): string =>
   `${regNo.trim().toLowerCase()}@${PATIENT_EMAIL_DOMAIN}`;
 
+/** Geçerli kullanıcı adı / kayıt no deseni (e-posta yerel kısmı olarak güvenli). */
+export const USERNAME_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
+
 /** Service role (RLS bypass) istemcisi. */
 export function adminClient(): SupabaseClient {
   return createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
@@ -51,4 +54,14 @@ export async function getCaller(req: Request): Promise<CallerProfile | null> {
 
 export function randomPassword(): string {
   return crypto.randomUUID() + crypto.randomUUID().slice(0, 8);
+}
+
+/**
+ * Hastaya iletilecek tek kullanımlık aktivasyon kodu. Karıştırılması kolay
+ * karakterler (0/O, 1/I/L) dışlanır; okunup yazılması kolay 8 haneli kod.
+ */
+export function activationCode(): string {
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const bytes = crypto.getRandomValues(new Uint8Array(8));
+  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
 }

@@ -14,15 +14,19 @@ import { formatDateTime } from '@/lib/date';
 import { supabase } from '@/lib/supabase';
 import { colors, radius, spacing, typography } from '@/theme';
 import { Message } from '@/types/db';
+import { notifyNewMessage } from '@/features/notifications/api';
+import { clearActiveThread, setActiveThread } from './activeThread';
 import { listMessages, markMessagesRead, sendMessage } from './api';
 
 interface MessageThreadProps {
   patientId: string;
-  senderRole: 'patient' | 'admin';
+  /** Sohbetin personel tarafı. Sohbet (patientId, staffId) çiftine özeldir. */
+  staffId: string;
+  senderRole: 'patient' | 'staff';
 }
 
-/** Hasta ↔ araştırmacı mesaj akışı (her iki taraf da kullanır). */
-export function MessageThread({ patientId, senderRole }: MessageThreadProps) {
+/** Hasta ↔ belirli bir personel arasındaki gizli mesaj akışı (her iki taraf da kullanır). */
+export function MessageThread({ patientId, staffId, senderRole }: MessageThreadProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
@@ -31,35 +35,47 @@ export function MessageThread({ patientId, senderRole }: MessageThreadProps) {
 
   const load = useCallback(async () => {
     try {
-      const data = await listMessages(patientId);
+      const data = await listMessages(patientId, staffId);
       setMessages(data);
-      await markMessagesRead(patientId, senderRole);
+      await markMessagesRead(patientId, staffId, senderRole);
     } catch (e) {
       console.warn('[messages] load error', e);
     } finally {
       setLoading(false);
     }
-  }, [patientId, senderRole]);
+  }, [patientId, staffId, senderRole]);
+
+  // Bu sohbet açıkken uygulama‑içi banner'ı bastır (mesaj zaten listede görünür).
+  useEffect(() => {
+    setActiveThread(patientId, staffId);
+    return () => clearActiveThread(patientId, staffId);
+  }, [patientId, staffId]);
 
   useEffect(() => {
     load();
     const channel = supabase
-      .channel(`messages:${patientId}`)
+      .channel(`messages:${patientId}:${staffId}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `patient_id=eq.${patientId}` },
         (payload) => {
           const incoming = payload.new as Message;
+          // Yalnızca bu sohbete (aynı personel) ait mesajları kabul et.
+          if (incoming.staff_id !== staffId) return;
           setMessages((prev) =>
             prev.some((m) => m.id === incoming.id) ? prev : [...prev, incoming],
           );
+          // Ekran açıkken karşı taraftan gelen mesajı okundu işaretle.
+          if (incoming.sender_role !== senderRole) {
+            markMessagesRead(patientId, staffId, senderRole).catch(() => {});
+          }
         },
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [load, patientId]);
+  }, [load, patientId, staffId, senderRole]);
 
   const onSend = async () => {
     const body = text.trim();
@@ -67,8 +83,10 @@ export function MessageThread({ patientId, senderRole }: MessageThreadProps) {
     setSending(true);
     setText('');
     try {
-      const msg = await sendMessage(patientId, body, senderRole);
+      const msg = await sendMessage(patientId, staffId, body, senderRole);
       setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+      // Karşı tarafa push bildirimi (best-effort; başarısızlık mesajı etkilemez).
+      notifyNewMessage(msg.id);
     } catch (e) {
       setText(body); // hata olursa metni geri koy
       console.warn('[messages] send error', e);

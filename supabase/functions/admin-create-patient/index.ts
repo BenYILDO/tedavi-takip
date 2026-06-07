@@ -1,5 +1,5 @@
 import { corsHeaders, jsonResponse } from '../_shared/cors.ts';
-import { adminClient, getCaller, randomPassword, regNoToEmail } from '../_shared/util.ts';
+import { activationCode, adminClient, getCaller, randomPassword, regNoToEmail } from '../_shared/util.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -11,7 +11,7 @@ Deno.serve(async (req) => {
     }
 
     const { registration_number, full_name } = await req.json();
-    const regNo = (registration_number ?? '').toString().trim();
+    const regNo = (registration_number ?? '').toString().trim().toLowerCase();
     if (!regNo) {
       return jsonResponse({ error: 'Kayıt numarası zorunludur.' }, 400);
     }
@@ -52,7 +52,17 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: profileErr.message }, 400);
     }
 
-    return jsonResponse({ ok: true, patient_id: created.user.id });
+    // Tek kullanımlık aktivasyon kodu: hasta ilk şifresini belirlerken doğrulanır.
+    const code = activationCode();
+    const { error: codeErr } = await admin
+      .from('patient_activation')
+      .insert({ patient_id: created.user.id, code });
+    if (codeErr) {
+      await admin.auth.admin.deleteUser(created.user.id);
+      return jsonResponse({ error: codeErr.message }, 400);
+    }
+
+    return jsonResponse({ ok: true, patient_id: created.user.id, activation_code: code });
   } catch (e) {
     return jsonResponse({ error: e instanceof Error ? e.message : 'Beklenmeyen hata.' }, 500);
   }

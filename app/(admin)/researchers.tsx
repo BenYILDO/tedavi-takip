@@ -1,6 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { alertAsync } from '@/lib/dialog';
 import {
   Button,
   Card,
@@ -15,7 +17,10 @@ import { formatDate } from '@/lib/date';
 import { useAsync } from '@/lib/useAsync';
 import { colors, radius, spacing, typography } from '@/theme';
 
+const USERNAME_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;
+
 export default function ResearchersScreen() {
+  const router = useRouter();
   const { data, loading, error, refetch } = useAsync(() => listResearchers(), []);
 
   const [username, setUsername] = useState('');
@@ -27,14 +32,25 @@ export default function ResearchersScreen() {
 
   const onCreate = async () => {
     setFormError(null);
-    if (!username.trim() || !fullName.trim() || password.length < 6) {
+    const normalizedUsername = username.trim().toLowerCase();
+    if (!normalizedUsername || !fullName.trim() || password.length < 6) {
       setFormError('Kullanıcı adı, ad soyad ve en az 6 karakterlik şifre zorunludur.');
+      return;
+    }
+    if (!phone.trim()) {
+      setFormError('Telefon numarası zorunludur.');
+      return;
+    }
+    if (!USERNAME_PATTERN.test(normalizedUsername)) {
+      setFormError(
+        'Kullanıcı adı harf veya rakamla başlamalı; yalnızca İngilizce küçük harf, rakam, _ ve - içermelidir.',
+      );
       return;
     }
     setSubmitting(true);
     try {
-      await createResearcher(username, fullName, password, phone);
-      Alert.alert('Araştırmacı oluşturuldu', `${fullName} hesabı oluşturuldu.`);
+      await createResearcher(normalizedUsername, fullName, password, phone);
+      alertAsync('Araştırmacı oluşturuldu', `${fullName} hesabı oluşturuldu.`);
       setUsername('');
       setFullName('');
       setPhone('');
@@ -60,11 +76,12 @@ export default function ResearchersScreen() {
           onChangeText={setUsername}
           autoCapitalize="none"
           autoCorrect={false}
+          textContentType="username"
         />
         <TextField label="Ad Soyad *" placeholder="Araştırmacı adı" value={fullName} onChangeText={setFullName} />
         <TextField
-          label="Telefon"
-          placeholder="İletişim numarası (opsiyonel)"
+          label="Telefon *"
+          placeholder="İletişim numarası"
           value={phone}
           onChangeText={setPhone}
           keyboardType="phone-pad"
@@ -90,18 +107,36 @@ export default function ResearchersScreen() {
       ) : (
         <View style={styles.list}>
           {data.map((r) => (
-            <Card key={r.id} style={styles.row}>
-              <View style={styles.avatar}>
-                <Ionicons name="person-circle" size={24} color={colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.name}>{r.full_name || r.registration_number}</Text>
-                <Text style={styles.meta}>
-                  @{r.registration_number}
-                  {r.phone ? ` · ${r.phone}` : ''} · {formatDate(r.created_at.slice(0, 10))}
-                </Text>
-              </View>
-            </Card>
+            <Pressable
+              key={r.id}
+              onPress={() =>
+                router.push({
+                  pathname: '/(admin)/researcher-detail',
+                  params: {
+                    id: r.id,
+                    name: r.full_name ?? '',
+                    username: r.registration_number ?? '',
+                    phone: r.phone ?? '',
+                    phoneHidden: r.phone_hidden ? '1' : '0',
+                  },
+                })
+              }
+            >
+              <Card style={styles.row}>
+                <View style={styles.avatar}>
+                  <Ionicons name="person-circle" size={24} color={colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.name}>{r.full_name || r.registration_number}</Text>
+                  <Text style={styles.meta}>
+                    @{r.registration_number}
+                    {r.phone ? ` · ${r.phone}` : ''}
+                    {r.phone_hidden ? ' · gizli' : ''} · {formatDate(r.created_at.slice(0, 10))}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textFaint} />
+              </Card>
+            </Pressable>
           ))}
         </View>
       )}

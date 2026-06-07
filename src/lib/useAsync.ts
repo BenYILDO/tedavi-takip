@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 interface AsyncState<T> {
   data: T | null;
@@ -16,13 +16,17 @@ export function useAsync<T>(fn: () => Promise<T>, deps: unknown[] = []): AsyncSt
   const [data, setDataState] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasData = useRef(false);
 
   const run = useCallback(async () => {
-    setLoading(true);
+    // Tam ekran "yükleniyor" yalnızca ilk yüklemede (henüz veri yokken) gösterilir.
+    // Böylece odak/çekerek tazeleme sırasında ekran çakmaz; mevcut veri ekranda kalır.
+    if (!hasData.current) setLoading(true);
     setError(null);
     try {
       const result = await fn();
       setDataState(result);
+      hasData.current = true;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Bir hata oluştu.');
     } finally {

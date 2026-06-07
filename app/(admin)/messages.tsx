@@ -33,7 +33,7 @@ export default function MessagesScreen() {
         <EmptyState
           icon="chatbubbles-outline"
           title="Mesaj yok"
-          description="Henüz hiçbir hasta mesaj göndermedi."
+          description="Henüz mesajlaştığınız bir hasta yok. Hasta detayından mesaj başlatabilirsiniz."
         />
       ) : (
         <View style={styles.list}>
@@ -63,7 +63,7 @@ export default function MessagesScreen() {
                     style={[styles.preview, t.unread > 0 && styles.unreadPreview]}
                     numberOfLines={1}
                   >
-                    {t.lastMessage.sender_role === 'admin' ? 'Siz: ' : ''}
+                    {t.lastMessage.sender_role === 'staff' ? 'Siz: ' : ''}
                     {t.lastMessage.body}
                   </Text>
                 </View>

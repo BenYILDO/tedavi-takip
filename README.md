@@ -14,12 +14,14 @@ Araştırmacılar (ve yönetici) hasta kayıtlarını oluşturur, raporları ve 
 | Rol | Yetki |
 |-----|-------|
 | **admin** | Sistemi yönetir, araştırmacı oluşturur, **tüm** hastaları/raporları görür, içerik & ayarları düzenler. |
-| **researcher** (araştırmacı) | Hasta kaydı oluşturur, **tüm** hastaların rapor ve mesajlarını görür ve takip eder. |
+| **researcher** (araştırmacı) | Hasta kaydı oluşturur, **tüm** hastaların raporlarını görür. Mesajlaşma kişiye özeldir: araştırmacı yalnızca **kendisinin** taraf olduğu sohbetleri görür. |
 | **patient** (hasta) | Eğitim içerikleri, kayıt günlüğü (ilaç + semptom), soru sor. |
 
 Hastalar **kayıt numarası + şifre** ile giriş yapar. Kayıt numarası dahili olarak
 `<kayıtno>@tedavitakip.local` auth e-postasına eşlenir. Hasta hesabını araştırmacı oluşturur;
-hasta ilk girişte kendi şifresini belirler.
+oluşturma sırasında üretilen **tek kullanımlık aktivasyon kodu** hastaya iletilir. Hasta ilk
+girişte kayıt numarası + aktivasyon kodu ile kendi şifresini belirler (kod, kayıt numarasını
+bilen birinin hesabı ele geçirmesini önler).
 
 ---
 
@@ -52,7 +54,14 @@ Supabase CLI ile `supabase db push`):
 1. `supabase/migrations/0001_init.sql` — tablolar, fonksiyonlar, RLS
 2. `supabase/migrations/0002_storage.sql` — `education-media` Storage bucket'ı
 3. `supabase/migrations/0003_submit_report.sql` — atomik semptom raporu kaydı (RPC)
-4. `supabase/seed.sql` — semptom listesi + örnek eğitim içerikleri + ayarlar
+4. `supabase/migrations/0004_private_messages.sql` — kişiye özel (gizli) mesaj sohbetleri
+5. `supabase/migrations/0005_secure_profile_updates.sql` — profil güncellemede yetki kısıtı
+6. `supabase/migrations/0006_push_tokens.sql` — push bildirim cihaz token'ları
+7. `supabase/migrations/0007_patient_activation_code.sql` — hasta aktivasyon kodu (hesap ele geçirmeyi önler)
+8. `supabase/migrations/0008_profile_visibility.sql` — hasta yalnızca araştırmacıları ve sohbet ettiği personeli görür
+9. `supabase/migrations/0009_profile_fields.sql` — avatar + telefon gizliliği + maskeli personel görünümü (`staff_public`)
+10. `supabase/migrations/0010_avatars_storage.sql` — profil fotoğrafları için `avatars` Storage bucket'ı
+11. `supabase/seed.sql` — semptom listesi + örnek eğitim içerikleri + ayarlar
 
 ### İlk yönetici (admin) hesabını oluşturma
 
@@ -77,7 +86,11 @@ Service role gerektiren işlemler Edge Functions ile yapılır (anahtar istemciy
 # Supabase CLI ile (bir kez): supabase login && supabase link --project-ref <ref>
 supabase functions deploy admin-create-patient
 supabase functions deploy admin-create-researcher
+supabase functions deploy admin-update-researcher
 supabase functions deploy patient-set-password
+supabase functions deploy set-username
+supabase functions deploy delete-account
+supabase functions deploy notify-message
 
 # Hasta kayıt numarası → e-posta alan adı (uygulamadaki ile AYNI olmalı):
 supabase secrets set PATIENT_EMAIL_DOMAIN=tedavitakip.local
@@ -96,6 +109,51 @@ supabase secrets set PATIENT_EMAIL_DOMAIN=tedavitakip.local
 Eğitim metinlerini de aynı ekrandan düzenleyebilirsiniz.
 
 ---
+
+## Bildirimler (push & hatırlatıcı)
+
+Uygulama iki tür bildirim gönderir:
+
+- **Yeni mesaj push'u** — bir taraf mesaj gönderince karşı tarafa "mesajınız var"
+  bildirimi gider. Cihaz token'ları `push_tokens` tablosunda tutulur; gönderim
+  `notify-message` Edge Function'ı üzerinden Expo Push servisiyle yapılır.
+- **Günlük tedavi hatırlatıcısı** — hasta kendi saatini seçer (cihazda saklanır).
+  Önümüzdeki birkaç gün için önceden zamanlanır; böylece uygulama açılmasa da
+  hatırlatıcı sürer. Uygulama her açıldığında liste güncellenir ve hasta bugünkü
+  kaydını girdiyse bugünün hatırlatıcısı atlanır.
+
+Gerekenler:
+
+1. **EAS projectId**: push token alabilmek için bir kez `eas init` çalıştırın
+   (bu, `app.json` → `extra.eas.projectId` değerini ekler). Yoksa push çalışmaz,
+   yerel hatırlatıcılar yine çalışır.
+2. **Gerçek build**: push bildirimleri **Expo Go ile test edilemez**; bir EAS
+   geliştirme/üretim build'i gerekir. Android push için EAS, FCM kimlik bilgilerini
+   yönetir (`eas credentials`). iOS için APNs EAS tarafından otomatik sağlanır.
+3. `supabase functions deploy notify-message` ile fonksiyonu yayınlayın.
+
+> Web panelinde push bildirimleri devre dışıdır (yalnızca mobil).
+
+### Uygulama‑içi mesaj bildirimi
+
+Uygulama **açıkken** yeni mesaj gelirse OS bildirimi yerine ekranın üstünde
+animasyonlu bir **uygulama‑içi banner** belirir (Supabase Realtime ile). Aynı sohbet
+zaten açıksa banner gösterilmez. Uygulama **arka plandayken** normal OS push'u gelir.
+
+## Profil ve Ayarlar
+
+Hasta ve personel, ana ekrandaki profil/ayarlar girişinden:
+
+- Profil fotoğrafı yükler (`avatars` bucket'ı — `0010` migration'ı gerekir),
+- Görünen isim, kullanıcı adı (giriş kimliği — `set-username` fonksiyonu auth
+  e‑postasını da günceller), telefon ve şifresini değiştirir,
+- **Telefon zorunludur.** Personel "telefonumu gizle" ile hastaların numarasını
+  görmesini engelleyebilir (hasta tarafında arama butonu/numara gizlenir).
+- **Hesabını ve tüm verilerini siler** (iki aşamalı onay; `delete-account` fonksiyonu).
+
+Yönetici, **Araştırmacılar** ekranından bir araştırmacıya dokunup bilgilerini
+(ad, telefon, telefon gizliliği, kullanıcı adı, şifre) düzenleyebilir
+(`admin-update-researcher` fonksiyonu).
 
 ## Geliştirme
 

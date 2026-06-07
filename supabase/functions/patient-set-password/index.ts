@@ -5,11 +5,12 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const { registration_number, password } = await req.json();
+    const { registration_number, password, activation_code } = await req.json();
     const regNo = (registration_number ?? '').toString().trim();
     const pass = (password ?? '').toString();
+    const code = (activation_code ?? '').toString().trim().toUpperCase();
 
-    if (!regNo || pass.length < 6) {
+    if (!regNo || pass.length < 6 || !code) {
       return jsonResponse({ error: 'Geçersiz istek.' }, 400);
     }
 
@@ -30,6 +31,18 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Şifre zaten belirlenmiş. Lütfen giriş yapın.' }, 409);
     }
 
+    // Aktivasyon kodunu doğrula. Kod, hasta oluşturulurken üretilip araştırmacı
+    // tarafından hastaya iletilir; böylece kayıt numarasını bilen biri hesabı
+    // ele geçiremez.
+    const { data: activation } = await admin
+      .from('patient_activation')
+      .select('code')
+      .eq('patient_id', profile.id)
+      .maybeSingle();
+    if (!activation || activation.code !== code) {
+      return jsonResponse({ error: 'Aktivasyon kodu hatalı. Araştırmacınızla iletişime geçin.' }, 403);
+    }
+
     const { error: updErr } = await admin.auth.admin.updateUserById(profile.id, {
       password: pass,
     });
@@ -44,6 +57,9 @@ Deno.serve(async (req) => {
     if (profErr) {
       return jsonResponse({ error: profErr.message }, 400);
     }
+
+    // Aktivasyon kodu tek kullanımlıktır: kullanıldıktan sonra sil.
+    await admin.from('patient_activation').delete().eq('patient_id', profile.id);
 
     return jsonResponse({ ok: true });
   } catch (e) {

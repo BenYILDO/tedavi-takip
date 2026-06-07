@@ -11,16 +11,10 @@ import {
   SeverityBadge,
 } from '@/components';
 import { getReportsForDate } from '@/features/admin/api';
-import { formatDate, formatTime, todayISO } from '@/lib/date';
+import { addDays, formatDate, formatTime, todayISO } from '@/lib/date';
 import { useAsync } from '@/lib/useAsync';
 import { useFocusRefetch } from '@/lib/useFocusRefetch';
 import { colors, radius, spacing, typography } from '@/theme';
-
-function shiftDate(iso: string, days: number): string {
-  const d = new Date(iso + 'T00:00:00');
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
-}
 
 export default function ReportsScreen() {
   const router = useRouter();
@@ -35,7 +29,7 @@ export default function ReportsScreen() {
       refreshControl={<RefreshControl refreshing={false} onRefresh={refetch} tintColor={colors.primary} />}
     >
       <Card style={styles.dateBar} flat>
-        <Pressable onPress={() => setDate(shiftDate(date, -1))} hitSlop={8} style={styles.navBtn}>
+        <Pressable onPress={() => setDate(addDays(date, -1))} hitSlop={8} style={styles.navBtn}>
           <Ionicons name="chevron-back" size={22} color={colors.primary} />
         </Pressable>
         <View style={styles.dateCenter}>
@@ -43,7 +37,7 @@ export default function ReportsScreen() {
           {isToday ? <Text style={styles.todayTag}>Bugün</Text> : null}
         </View>
         <Pressable
-          onPress={() => !isToday && setDate(shiftDate(date, 1))}
+          onPress={() => !isToday && setDate(addDays(date, 1))}
           hitSlop={8}
           style={[styles.navBtn, isToday && styles.navDisabled]}
           disabled={isToday}

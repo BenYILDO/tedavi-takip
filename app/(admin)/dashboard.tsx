@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
@@ -45,12 +46,16 @@ export default function AdminDashboard() {
           <Text style={styles.name}>{profile?.full_name ?? 'Panel'}</Text>
         </View>
         <Pressable
-          onPress={() => router.push('/(admin)/change-password')}
+          onPress={() => router.push('/(admin)/settings')}
           hitSlop={8}
-          style={styles.logoutBtn}
-          accessibilityLabel="Şifre değiştir"
+          style={styles.avatarBtn}
+          accessibilityLabel="Profil ve ayarlar"
         >
-          <Ionicons name="key-outline" size={20} color={colors.primary} />
+          {profile?.avatar_url ? (
+            <Image source={{ uri: profile.avatar_url }} style={styles.avatarImg} contentFit="cover" />
+          ) : (
+            <Ionicons name="person-circle-outline" size={26} color={colors.primary} />
+          )}
         </Pressable>
         <Pressable onPress={signOut} hitSlop={8} style={styles.logoutBtn} accessibilityLabel="Çıkış">
           <Ionicons name="log-out-outline" size={22} color={colors.primary} />
@@ -158,6 +163,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  avatarBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  avatarImg: { width: 44, height: 44 },
   statsRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
   stat: { flex: 1, alignItems: 'center', gap: 4, paddingVertical: spacing.md },
   statValue: { ...typography.title },

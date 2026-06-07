@@ -8,6 +8,8 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { unregisterCurrentPush } from '@/features/notifications/push';
+import { readFunctionError } from '@/lib/functionError';
 import { regNoToEmail, supabase } from '@/lib/supabase';
 import { rememberedRegNo } from '@/lib/storage';
 import { Profile } from '@/types/db';
@@ -24,8 +26,12 @@ interface AuthContextValue {
   checkAccount: (regNo: string) => Promise<AccountStatus>;
   /** Kayıt no + şifre ile giriş yapar. */
   signIn: (regNo: string, password: string) => Promise<void>;
-  /** İlk kez şifre belirleyip ardından giriş yapar (hasta). */
-  setPasswordAndSignIn: (regNo: string, password: string) => Promise<void>;
+  /** İlk kez şifre belirleyip ardından giriş yapar (hasta). Aktivasyon kodu gerekir. */
+  setPasswordAndSignIn: (
+    regNo: string,
+    password: string,
+    activationCode: string,
+  ) => Promise<void>;
   /** Giriş yapmış kullanıcının şifresini değiştirir. */
   changePassword: (newPassword: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -98,7 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAccount = useCallback(async (regNo: string): Promise<AccountStatus> => {
     const { data, error } = await supabase.rpc('account_status', {
-      p_reg: regNo.trim(),
+      p_reg: regNo.trim().toLowerCase(),
     });
     if (error) {
       console.warn('[auth] account_status error', error.message);
@@ -116,16 +122,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (error) {
       throw new Error('Kullanıcı adı veya şifre hatalı.');
     }
-    await rememberedRegNo.set(regNo.trim());
+    await rememberedRegNo.set(regNo.trim().toLowerCase());
   }, []);
 
   const setPasswordAndSignIn = useCallback(
-    async (regNo: string, password: string) => {
+    async (regNo: string, password: string, activationCode: string) => {
       const { error } = await supabase.functions.invoke('patient-set-password', {
-        body: { registration_number: regNo.trim(), password },
+        body: {
+          registration_number: regNo.trim().toLowerCase(),
+          password,
+          activation_code: activationCode.trim().toUpperCase(),
+        },
       });
       if (error) {
-        throw new Error('Şifre belirlenemedi. Lütfen tekrar deneyin.');
+        const message = await readFunctionError(error, 'Şifre belirlenemedi. Lütfen tekrar deneyin.');
+        throw new Error(message);
       }
       await signIn(regNo, password);
     },
@@ -140,6 +151,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    // Çıkmadan önce bu cihazın push token'ını sil (oturum hâlâ geçerliyken).
+    await unregisterCurrentPush();
     await supabase.auth.signOut();
   }, []);
 
